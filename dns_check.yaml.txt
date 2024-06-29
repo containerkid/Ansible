@@ -4,16 +4,27 @@
   gather_facts: no
   tasks:
     - name: Check if example.com resolves
-      shell: |
-        if nslookup example.com > /dev/null 2>&1; then
-          echo "yes, example.com is resolving"
-        else
-          echo "no, example.com is not resolving"
-        fi
+      command: "getent hosts example.com"
       register: nslookup_result
       changed_when: false
+      failed_when: nslookup_result.rc != 0
       ignore_errors: yes
+      async: 30
+      poll: 0
 
-    - name: Ensure the script does not hang and report the result
+    - name: Ensure task completes within the timeout period
+      async_status:
+        jid: "{{ nslookup_result.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 5
+      delay: 5
+
+    - name: Report DNS resolution status
       debug:
-        msg: "{{ nslookup_result.stdout }}"
+        msg: >
+          {% if job_result.finished and job_result.rc == 0 %}
+          yes, example.com is resolving
+          {% else %}
+          no, example.com is not resolving
+          {% endif %}
