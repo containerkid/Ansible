@@ -1,0 +1,19 @@
+---
+- name: Check DNS Resolution
+  hosts: servers
+  gather_facts: no
+  tasks:
+    - name: Check if example.com resolves
+      shell: |
+        if nslookup example.com > /dev/null 2>&1; then
+          echo "yes, example.com is resolving"
+        else
+          echo "no, example.com is not resolving"
+        fi
+      register: nslookup_result
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Ensure the script does not hang and report the result
+      debug:
+        msg: "{{ nslookup_result.stdout }}"
